@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(cuid())
+  telegramId String?  @unique @map("telegram_id")
+  username   String?
+  firstName  String?  @map("first_name")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  goals   Goal[]
+  entries Entry[]
+
+  @@map("users")
+}
+
+model Goal {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  title       String
+  description String?
+  deadline    DateTime?
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subcategories Subcategory[]
+  entries       Entry[]
+
+  @@map("goals")
+}
+
+model Subcategory {
+  id        String   @id @default(cuid())
+  goalId    String   @map("goal_id")
+  name      String
+  emoji     String   @default("🎯")
+  weight    Float    @default(1.0) // относительный вес при расчёте прогресса
+  color     String   @default("#6366f1")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  goal         Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  entryScores  EntryScore[]
+
+  @@map("subcategories")
+}
+
+model Entry {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  goalId     String   @map("goal_id")
+  rawText    String   @map("raw_text") // исходный текст пользователя
+  date       DateTime @default(now()) @db.Date
+  totalScore Float    @default(0) @map("total_score") // итоговый балл дня (0-100)
+  aiComment  String?  @map("ai_comment") // короткий комментарий от AI
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal        Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  entryScores EntryScore[]
+
+  @@unique([userId, goalId, date])
+  @@map("entries")
+}
+
+model EntryScore {
+  id             String   @id @default(cuid())
+  entryId        String   @map("entry_id")
+  subcategoryId  String   @map("subcategory_id")
+  score          Float    // 0-10 балл по подкатегории
+  actions        String[] // конкретные действия, которые AI выделил
+  aiComment      String?  @map("ai_comment")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  entry       Entry       @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  subcategory Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+
+  @@map("entry_scores")
+}
+
+// Для хранения стриков и агрегатов — быстрее, чем считать из entries
+model UserStats {
+  id               String   @id @default(cuid())
+  userId           String   @unique @map("user_id")
+  goalId           String   @map("goal_id")
+  currentStreak    Int      @default(0) @map("current_streak")
+  longestStreak    Int      @default(0) @map("longest_streak")
+  totalScore       Float    @default(0) @map("total_score")
+  totalEntries     Int      @default(0) @map("total_entries")
+  lastEntryDate    DateTime? @map("last_entry_date") @db.Date
+  progressPercent  Float    @default(0) @map("progress_percent")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("user_stats")
+}
