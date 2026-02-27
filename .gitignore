@@ -3,10 +3,8 @@ node_modules/
 */node_modules/
 
 # Build output
-dist/
-build/
-*/dist/
-*/build/
+backend/dist/
+# frontend/dist committed for Railway (avoids OOM on free plan)
 
 # Environment files
 .env
