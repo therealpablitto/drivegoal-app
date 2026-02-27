@@ -1,8 +1,10 @@
 import 'dotenv/config';
+import path from 'path';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
+import staticFiles from '@fastify/static';
 
 import { authRoutes } from './routes/auth.routes';
 import { goalsRoutes } from './routes/goals.routes';
@@ -25,9 +27,9 @@ const app = Fastify({
 async function bootstrap() {
   // ─── Plugins ─────────────────────────────────────────────────────────────
   await app.register(cors, {
-    origin: process.env.NODE_ENV === 'production'
-      ? ['https://your-mini-app.telegram.com'] // заменить в проде
-      : true,
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(',')
+      : true,  // allow all (frontend served from same domain)
     credentials: true,
   });
 
@@ -49,6 +51,24 @@ async function bootstrap() {
   await app.register(goalsRoutes,    { prefix: '/api/v1' });
   await app.register(entriesRoutes,  { prefix: '/api/v1' });
   await app.register(progressRoutes, { prefix: '/api/v1' });
+
+  // ─── Static files (production) ────────────────────────────────────────────
+  if (process.env.NODE_ENV === 'production') {
+    const publicDir = path.join(__dirname, '..', 'public');
+    await app.register(staticFiles, {
+      root: publicDir,
+      prefix: '/',
+      // Don't serve static for /api routes
+      decorateReply: false,
+    });
+    // SPA fallback — serve index.html for unknown routes
+    app.setNotFoundHandler(async (request, reply) => {
+      if (!request.url.startsWith('/api')) {
+        return reply.sendFile('index.html');
+      }
+      reply.code(404).send({ error: 'Not Found' });
+    });
+  }
 
   // ─── Health check ─────────────────────────────────────────────────────────
   app.get('/health', async () => ({
