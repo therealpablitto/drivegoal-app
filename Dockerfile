@@ -1,5 +1,5 @@
 # ─── Build Backend ────────────────────────────────────────────────────────────
-FROM node:20-alpine AS backend-builder
+FROM node:20-slim AS backend-builder
 
 WORKDIR /app/backend
 COPY backend/package*.json ./
@@ -10,7 +10,10 @@ RUN npm run build && npx prisma generate
 
 
 # ─── Production ───────────────────────────────────────────────────────────────
-FROM node:20-alpine
+FROM node:20-slim
+
+# Install OpenSSL for Prisma
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
