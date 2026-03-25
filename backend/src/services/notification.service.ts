@@ -129,7 +129,7 @@ export function scheduleWeeklyReport(): void {
           `📈 Прогресс к цели: <b>${progress}%</b>\n` +
           `🔥 Текущий стрик: <b>${streak} дней</b>\n` +
           `📝 Всего записей: <b>${stats.totalEntries}</b>\n\n` +
-          `Открой приложение, чтобы увидеть полный AI-анализ недели 👇`;
+          `Напиши /report чтобы увидеть полный AI-анализ недели 👇`;
 
         await sendTelegramMessage(user.telegramId, message);
       }
